@@ -62,10 +62,10 @@ func (jd jsonDoc) toVersions() ([]string, error) {
 	return versions, nil
 }
 
-func fetch(since time.Time) {
+func fetch(since time.Time) ([]result, error) {
 	sinceJson, err := json.Marshal(since)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	q := url.Values{}
 	q.Add("include_docs", "true")
@@ -76,26 +76,30 @@ func fetch(since time.Time) {
 		Path:     "registry/_design/app/_view/updated",
 		RawQuery: q.Encode(),
 	}
-	log.Print(u)
-	//  resp, err := http.Get("https://skimdb.npmjs.com/registry/_design/app/_view/updated?include_docs=true&startkey=%222014-08-25T02:58:36.731Z%22")
-
 	resp, err := http.Get(u.String())
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	decoder := json.NewDecoder(resp.Body)
 	var r jsonResult
 	err = decoder.Decode(&r)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	results, err := r.toResults()
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
-	fmt.Printf("%+v", results)
+	return results, nil
 }
 
 func main() {
-	fetch(time.Now().Add(-time.Minute))
+	for {
+		results, err := fetch(time.Now())
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Printf("%+v", results)
+		time.Sleep(10 * time.Second)
+	}
 }
