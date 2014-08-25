@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"time"
 )
 
@@ -61,8 +62,24 @@ func (jd jsonDoc) toVersions() ([]string, error) {
 	return versions, nil
 }
 
-func main() {
-	resp, err := http.Get("https://skimdb.npmjs.com/registry/_design/app/_view/updated?include_docs=true&startkey=%222014-08-25T02:58:36.731Z%22")
+func fetch(since time.Time) {
+	sinceJson, err := json.Marshal(since)
+	if err != nil {
+		log.Fatal(err)
+	}
+	q := url.Values{}
+	q.Add("include_docs", "true")
+	q.Add("startkey", string(sinceJson))
+	u := url.URL{
+		Scheme:   "https",
+		Host:     "skimdb.npmjs.com",
+		Path:     "registry/_design/app/_view/updated",
+		RawQuery: q.Encode(),
+	}
+	log.Print(u)
+	//  resp, err := http.Get("https://skimdb.npmjs.com/registry/_design/app/_view/updated?include_docs=true&startkey=%222014-08-25T02:58:36.731Z%22")
+
+	resp, err := http.Get(u.String())
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -77,4 +94,8 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Printf("%+v", results)
+}
+
+func main() {
+	fetch(time.Now().Add(-time.Minute))
 }
