@@ -4,9 +4,10 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net/url"
 	"time"
 
-	"github.com/supershabam/nodeify/nodeify"
+	"github.com/supershabam/nodeify"
 )
 
 func main() {
@@ -16,19 +17,21 @@ func main() {
 
 	flag.Parse()
 
-	fetcher, err := nodeify.NewFetcher(*source)
+	u, err := url.Parse(*source)
 	if err != nil {
 		log.Fatal(err)
 	}
-	last := time.Now().Add(-*since)
-	for {
-		now := last
-		last = time.Now()
-		modules, err := fetcher.Fetch(now)
-		if err != nil {
-			log.Fatal(err)
-		}
-		fmt.Printf("%+v\n", modules)
-		time.Sleep(*period)
+	consumer := nodeify.Consumer{
+		Fetcher: &nodeify.HTTPFetcher{
+			URL: u,
+		},
+		Since:  time.Now().Add(-*since),
+		Period: *period,
+	}
+	for module := range consumer.Consume() {
+		fmt.Printf("%+v\n", module)
+	}
+	if err := consumer.Err(); err != nil {
+		log.Fatal(err)
 	}
 }
